@@ -3,7 +3,7 @@ var socket;
 function setup() {
   createCanvas(600, 400);
   background(220);
-  socket = io.connect('http://localhost:3000');
+  socket = io.connect('https://socket-drawing00.onrender.com');
   socket.on('mouse', newDrawing);
 }
 
