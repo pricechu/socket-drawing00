@@ -10,7 +10,7 @@ function setup() {
 function newDrawing(data) {
   noStroke();
   fill(255, 0, 100);
-  ellipse(data.x, data.y, 20, 20);
+  rect(data.x, data.y, 20, 20);
 }
 
 function mouseDragged() {
