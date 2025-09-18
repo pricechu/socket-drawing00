@@ -1,21 +1,12 @@
 {
-  "name": "p5_sockets",
+  "name": "rabbit-zoo",
   "version": "1.0.0",
-  "description": "p5 sockets testing",
-  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "keywords": [
-    "sockets",
-    "p5.js",
-    "node"
-  ],
-  "author": "pricechu",
-  "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0",
-    "socket.io": "^4.8.1"
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
   }
 }
