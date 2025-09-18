@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Draw a Rabbit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- p5.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.8/lib/p5.js"></script>
+  <style>
+    html, body { margin:0; padding:0; background:#101114; color:#fff; font-family: system-ui, sans-serif; }
+    #toolbar {
+      position: fixed; top: 10px; left: 10px; z-index: 10;
+      background: rgba(20,20,24,0.85); padding: 10px 12px; border-radius: 12px; backdrop-filter: blur(4px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    label { font-size: 12px; opacity: 0.85; }
+    input[type="color"], input[type="range"], input[type="text"] { vertical-align: middle; }
+    button { background:#4f8cff; color:white; border:none; padding: 8px 12px; border-radius: 8px; cursor:pointer; }
+    button.secondary { background:#343a40; }
+    canvas { display:block; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <label>Name: <input type="text" id="name" value="My Rabbit" size="12"></label>
+    <label>Brush: <input type="range" id="brushSize" min="1" max="40" value="8"></label>
+    <label>Color: <input type="color" id="brushColor" value="#ffffff"></label>
+    <button id="btnBrush">Brush</button>
+    <button id="btnEraser" class="secondary">Eraser</button>
+    <button id="btnClear" class="secondary">Clear</button>
+    <button id="btnSend">Send to Zoo</button>
+    <small style="opacity:0.75;">Tip: draw on transparent canvas</small>
+  </div>
+
+  <script src="draw.js"></script>
+</body>
+</html>

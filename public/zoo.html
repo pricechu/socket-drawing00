@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Rabbit Zoo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- p5.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"> </script>
+  <style>
+  html, body { margin:0; padding:0; background:#f4f7fb; font-family: system-ui, sans-serif; }
+    #ui {
+      position: fixed; top: 10px; left: 10px; z-index: 10;
+      background: rgba(255,255,255,0.85); padding: 10px 12px; border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12); backdrop-filter: blur(4px);
+    }
+    button { margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <strong>Rabbit Zoo</strong>
+    <button id="btnClear">Clear All</button>
+  </div>
+  <script src="zoo.js"></script>
+</body>
+</html>
