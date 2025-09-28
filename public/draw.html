@@ -3,34 +3,88 @@
 <head>
   <meta charset="utf-8" />
   <title>Draw a Rabbit</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <!-- p5.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/p5@1.11.8/lib/p5.js"></script>
   <style>
-    html, body { margin:0; padding:0; background:#101114; color:#fff; font-family: system-ui, sans-serif; }
-    #toolbar {
-      position: fixed; top: 10px; left: 10px; z-index: 10;
-      background: rgba(20,20,24,0.85); padding: 10px 12px; border-radius: 12px; backdrop-filter: blur(4px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    html, body {
+      margin:0;
+      padding:0;
+      background:#101114;
+      color:#fff;
+      font-family: system-ui, sans-serif;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
     }
-    label { font-size: 12px; opacity: 0.85; }
-    input[type="color"], input[type="range"], input[type="text"] { vertical-align: middle; }
-    button { background:#4f8cff; color:white; border:none; padding: 8px 12px; border-radius: 8px; cursor:pointer; }
+
+    .toolbar{
+      position: fixed; left: 50%; top: 12px;
+      transform: translateX(-50%);
+      display: flex; align-items: center;
+      gap: 10px;    padding: 10px 12px;
+      z-index: 10000;
+      -webkit-user-select: none;
+      user-select: none;
+      pointer-events: auto;
+      }
+
+        /* ✅ iPad 友善 Slider：允許水平拖動 */
+        .toolbar input[type="range"]{
+          width: min(15vw);
+          touch-action: pan-x;
+           /* 允許橫向拖動 */
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent; height: 28px;
+          outline: none;
+          }
+          /* WebKit 軌道 */
+          .toolbar input[type="range"]::-webkit-slider-runnable-track{
+            height: 6px;
+            background: #31343b;
+            border-radius: 999px;
+            }
+            /* WebKit 滑桿 */
+            .toolbar input[type="range"]::-webkit-slider-thumb{
+              -webkit-appearance: none;
+              appearance: none;
+              width: 28px; height: 28px; border-radius: 50%;
+              background: #ffffff; border: 2px solid #111;
+              margin-top: -11px;
+              /* 置中軌道 */
+              box-shadow: 0 0 0 3px rgba(46,204,113,0.25);
+              }
+              /* Firefox */
+              .toolbar input[type="range"]::-moz-range-track{
+                height: 6px; background: #31343b; border-radius: 999px;
+                }
+                .toolbar input[type="range"]::-moz-range-thumb{
+                  width: 28px; height: 28px; border-radius: 50%;
+                  background: #ffffff; border: 2px solid #111;
+                  box-shadow: 0 0 0 3px rgba(46,204,113,0.25);
+                }
+
+    label { font-size: 12px; opacity: 0.85; font-weight: bold;}
+    .toolbar button {
+      font-weight: bold;width: min(25vw);background:#247bad; color:white; border:none; padding: 8px 12px; border-radius: 8px; cursor:pointer; }
     button.secondary { background:#343a40; }
-    canvas { display:block; }
+    canvas {
+      display:block;
+      touch-action: none;
+    }
   </style>
 </head>
 <body>
-  <div id="toolbar">
-    <label>Name: <input type="text" id="name" value="My Rabbit" size="12"></label>
-    <label>Brush: <input type="range" id="brushSize" min="1" max="40" value="8"></label>
+
+
+
+  <div class="toolbar">
+    <label>Brush Size: <input type="range" id="brushSize" min="10" max="40" value="10"></label>
     <label>Color: <input type="color" id="brushColor" value="#ffffff"></label>
     <button id="btnBrush">Brush</button>
-    <button id="btnEraser" class="secondary">Eraser</button>
     <button id="btnClear" class="secondary">Clear</button>
-    <button id="btnSend">Send to Zoo</button>
-    <small style="opacity:0.75;">Tip: draw on transparent canvas</small>
+    <button id="btnSend">Send to Rabbit Playground</button>
   </div>
 
   <script src="draw.js"></script>

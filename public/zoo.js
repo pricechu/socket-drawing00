@@ -42,25 +42,45 @@ let adminMode = false;
 let _connBadge, _btnClear;
 
 // ------- Prefab（不需 Admin；開頁自動送；R key 立即送）-------
-const PREFAB_INTERVAL_MS = 60_000; // ~1分鐘一隻
+const PREFAB_INTERVAL_MS = 180_000; // ~1分鐘一隻
 let _prefabTimer = null;
 // TODO: 在此填入你預先準備嘅 PNG（同源路徑）
 const PREFAB_URLS = [
   '/assets/prefabs/rabbit01.png',
-  '/assets/prefabs/rabbit02.png',
-  '/assets/prefabs/rabbit03.png',
-  '/assets/prefabs/rabbit04.png',
-  '/assets/prefabs/rabbit05.png'
+  '/assets/prefabs/rabbit02.png'
 ];
 
 // 行列定義（每排的 y、朝向、縮放、跳高）
 let rowDefs = [];
+
+// --- Grass (depth layers) ---
+const GRASS_GROUPS_RANGE = [3, 5];     // 每行 2~3 組
+const GRASS_BLADES_RANGE  = [5, 10];   // 每組 5~10 條
+const GRASS_GROUP_WIDTH_FRONT = 60;   // 前景每組寬度(像素)；遠景會遞減
+const GRASS_GROUP_WIDTH_DECAY_PER_ROW = 0.82;
+
+const GRASS_HEIGHT_FRONT = 60;        // 前景草高(像素)；遠景遞減
+const GRASS_HEIGHT_DECAY_PER_ROW = 0.68;
+
+const GRASS_THICKNESS_FRONT = 2.2;     // 前景筆劃粗幼；遠景遞減
+const GRASS_THICKNESS_DECAY_PER_ROW = 0.9;
+
+const WIND_SPEED_FRONT = 0.85;         // 前景擺動速度；遠景遞減
+const WIND_SPEED_DECAY_PER_ROW = 0.9;
+
+const WIND_AMP_FRONT_PX = 10;          // 前景擺動幅度(像素)；遠景遞減
+const WIND_AMP_DECAY_PER_ROW = 0.7;
+
+let grassRows = [];     // 每 row 的草叢資料
+let tWind = 0;          // 風時間（動畫）
+
 
 // ---------------- Setup ----------------
 function setup() {
   canvas = createCanvas(windowWidth, windowHeight);
   frameRate(60);
   rowDefs = buildRowDefs();
+  buildGrassRows(); // ← 新增：根據 row 定義生成草叢
 
   // Connection badge / Clear All（只在 Admin 顯示）
   mountConnectionBadge(); hideConnBadge();
@@ -231,16 +251,96 @@ function makeRabbitFromImage(data, img) {
   };
 }
 
+//----------------------------------------
+
+function buildGrassRows() {
+  grassRows = [];
+  for (let i = 0; i < ROW_COUNT; i++) {
+    const def = rowDefs[i];
+    const gCount = floor(random(GRASS_GROUPS_RANGE[0], GRASS_GROUPS_RANGE[1] + 1));
+    const row = [];
+    for (let gi = 0; gi < gCount; gi++) {
+      const xNorm = random(0.18, 0.82); // 分佈在畫面中段，避免太貼邊
+      const blades = [];
+      const bladeCount = floor(random(GRASS_BLADES_RANGE[0], GRASS_BLADES_RANGE[1] + 1));
+      for (let bi = 0; bi < bladeCount; bi++) {
+        blades.push({
+          // 每條草的隨機種子
+          hJ: random(0.75, 1.25),       // 高度係數
+          xJ: random(-0.5, 0.5),        // 在 group 內的水平偏移（-0.5~0.5）
+          phase: random(TWO_PI),        // 相位
+          speedJ: random(0.8, 1.25),    // 速度擾動
+          ampJ: random(0.6, 1.3),       // 幅度擾動
+          thickJ: random(0.8, 1.2)      // 粗細擾動
+        });
+      }
+      row.push({ xNorm, blades });
+    }
+    grassRows.push(row);
+  }
+}
+
+function drawGrassRow(rowIdx) {
+  const def = rowDefs[rowIdx];
+  if (!def) return;
+
+  // 由前景參數遞減（越遠越細、越慢、越少擺）
+  const wGroup = GRASS_GROUP_WIDTH_FRONT * Math.pow(GRASS_GROUP_WIDTH_DECAY_PER_ROW, rowIdx);
+  const hBase  = GRASS_HEIGHT_FRONT      * Math.pow(GRASS_HEIGHT_DECAY_PER_ROW, rowIdx);
+  const thick  = GRASS_THICKNESS_FRONT   * Math.pow(GRASS_THICKNESS_DECAY_PER_ROW, rowIdx);
+  const windV  = WIND_SPEED_FRONT        * Math.pow(WIND_SPEED_DECAY_PER_ROW, rowIdx);
+  const ampPx  = WIND_AMP_FRONT_PX       * Math.pow(WIND_AMP_DECAY_PER_ROW, rowIdx);
+
+  // 顏色與透明度：越遠越淡/偏冷，簡單大氣透視效果
+  const depthT = rowIdx / max(1, ROW_COUNT - 1);
+  const r = lerp(60, 30, depthT), g = lerp(160, 110, depthT), b = lerp(110, 90, depthT);
+  const alpha = lerp(140, 60, depthT);
+
+  const yBase = def.yNorm * height; // 該 row 的地面線
+  noFill();
+  stroke(r, g, b, alpha);
+
+  const rowGroups = grassRows[rowIdx] || [];
+  for (const grp of rowGroups) {
+    const cx = grp.xNorm * width;
+    for (const blade of grp.blades) {
+      const bx = cx + blade.xJ * wGroup;    // 該條草的底部 x
+      const h  = hBase * blade.hJ;          // 該條草高度
+      const amp = ampPx * blade.ampJ;
+      const spd = windV * blade.speedJ;
+
+      // 風擺：頂部位移比底部大；用貝茲曲線畫草
+      const sway = Math.sin(tWind * spd + blade.phase) * amp;
+      const x0 = bx, y0 = yBase;
+      const x3 = bx + sway, y3 = yBase - h;
+      const x1 = bx + sway * 0.30, y1 = yBase - h * 0.45;
+      const x2 = bx + sway * 0.95, y2 = yBase - h * 0.85;
+
+      strokeWeight(max(0.6, thick * blade.thickJ));
+      bezier(x0, y0, x1, y1, x2, y2, x3, y3);
+    }
+  }
+}
+
 // ---------------- 主回圈 ----------------
 function draw() {
   drawNightBackground();
 
   const dt = deltaTime / 1000;
+  tWind += dt;                 // ← 風時間
+  tMoon += dt;                 //（你原有月亮已用 tMoon；保留）
+
+  // 更新兔子狀態
   for (const r of rabbits) updateRabbitHopOnly(r, dt);
 
-  // 後排先畫（由遠到近）
-  rabbits.sort((a, b) => (b.rowIdx - a.rowIdx));
-  for (const r of rabbits) drawRabbit(r);
+  // 由遠到近：每個 row 先畫草，再畫該 row 的兔子
+  const sorted = [...rabbits].sort((a, b) => b.rowIdx - a.rowIdx); // 後排在前（遠→近）
+  for (let row = ROW_COUNT - 1; row >= 0; row--) {
+    drawGrassRow(row); // 背景草
+    for (const r of sorted) {
+      if (r.rowIdx === row) drawRabbit(r); // 前景兔
+    }
+  }
 }
 
 // Hop-only FSM：'forward'（向前跳） / 'inplace'（原地跳） / 'idle'（停留）
@@ -372,7 +472,7 @@ function drawRabbit(r) {
 
   // 影子
   noStroke(); fill(50, 60);
-  ellipse(baseX + jx, baseY + jy + 6, drawW * 0.5, drawH * 0.10);
+  ellipse(baseX + jx, baseY + jy + 0, drawW * 0.8, drawH * 0.10);
 
   // 根據方向水平翻轉（以 baseX 為鏡像軸）
   push();
@@ -421,7 +521,72 @@ function drawNightBackground() {
     ellipse(cx, cy, r * 2, r * 2);
   }
   fill(255, 250, 210);
-  ellipse(cx, cy, (MOON_RADIUS * pulse) * 2, (MOON_RADIUS * pulse) * 2);
+  //ellipse(cx, cy, (MOON_RADIUS * pulse) * 2, (MOON_RADIUS * pulse) * 2);
+  ellipse(cx, cy, MOON_RADIUS  * 2, MOON_RADIUS * 2);
+
+  fill(0);
+  drawLion(cx, cy+30, 1.3);
+  rect(cx-width/2, cy+130, width, height);
+}
+
+function drawLion(x, y, scaleFactor = 1.0) {
+  // 已計好嘅基準值
+  const baseX = 300.70 + 180;
+  const baseY = 411.98;
+
+  beginShape();
+  vertex(x + (702.87 - baseX) * scaleFactor, y + (489.29 - baseY) * scaleFactor);
+  vertex(x + (693.13 - baseX) * scaleFactor, y + (483.18 - baseY) * scaleFactor);
+  vertex(x + (652.03 - baseX) * scaleFactor, y + (455.66 - baseY) * scaleFactor);
+  vertex(x + (643.80 - baseX) * scaleFactor, y + (455.66 - baseY) * scaleFactor);
+  bezierVertex(
+    x + (643.25 - baseX) * scaleFactor, y + (455.66 - baseY) * scaleFactor,
+    x + (642.70 - baseX) * scaleFactor, y + (455.54 - baseY) * scaleFactor,
+    x + (642.21 - baseX) * scaleFactor, y + (455.30 - baseY) * scaleFactor
+  );
+  vertex(x + (584.48 - baseX) * scaleFactor, y + (427.61 - baseY) * scaleFactor);
+  vertex(x + (544.92 - baseX) * scaleFactor, y + (433.30 - baseY) * scaleFactor);
+  bezierVertex(
+    x + (544.32 - baseX) * scaleFactor, y + (433.39 - baseY) * scaleFactor,
+    x + (543.71 - baseX) * scaleFactor, y + (433.32 - baseY) * scaleFactor,
+    x + (543.15 - baseX) * scaleFactor, y + (433.12 - baseY) * scaleFactor
+  );
+  vertex(x + (504.50 - baseX) * scaleFactor, y + (419.21 - baseY) * scaleFactor);
+  vertex(x + (467.72 - baseX) * scaleFactor, y + (431.81 - baseY) * scaleFactor);
+  bezierVertex(
+    x + (467.41 - baseX) * scaleFactor, y + (431.92 - baseY) * scaleFactor,
+    x + (467.08 - baseX) * scaleFactor, y + (431.98 - baseY) * scaleFactor,
+    x + (466.74 - baseX) * scaleFactor, y + (432.00 - baseY) * scaleFactor
+  );
+  vertex(x + (445.56 - baseX) * scaleFactor, y + (433.26 - baseY) * scaleFactor);
+  vertex(x + (427.45 - baseX) * scaleFactor, y + (441.71 - baseY) * scaleFactor);
+  vertex(x + (428.15 - baseX) * scaleFactor, y + (440.52 - baseY) * scaleFactor);
+  vertex(x + (433.16 - baseX) * scaleFactor, y + (437.81 - baseY) * scaleFactor);
+  vertex(x + (420.30 - baseX) * scaleFactor, y + (430.75 - baseY) * scaleFactor);
+  vertex(x + (408.61 - baseX) * scaleFactor, y + (428.21 - baseY) * scaleFactor);
+  bezierVertex(
+    x + (408.14 - baseX) * scaleFactor, y + (428.11 - baseY) * scaleFactor,
+    x + (407.69 - baseX) * scaleFactor, y + (427.91 - baseY) * scaleFactor,
+    x + (407.29 - baseX) * scaleFactor, y + (427.64 - baseY) * scaleFactor
+  );
+  vertex(x + (384.69 - baseX) * scaleFactor, y + (411.98 - baseY) * scaleFactor);
+  vertex(x + (372.35 - baseX) * scaleFactor, y + (416.38 - baseY) * scaleFactor);
+  vertex(x + (362.07 - baseX) * scaleFactor, y + (414.94 - baseY) * scaleFactor);
+  vertex(x + (347.94 - baseX) * scaleFactor, y + (426.22 - baseY) * scaleFactor);
+  vertex(x + (338.06 - baseX) * scaleFactor, y + (427.24 - baseY) * scaleFactor);
+  vertex(x + (332.44 - baseX) * scaleFactor, y + (432.30 - baseY) * scaleFactor);
+  vertex(x + (331.34 - baseX) * scaleFactor, y + (437.62 - baseY) * scaleFactor);
+  vertex(x + (338.24 - baseX) * scaleFactor, y + (452.93 - baseY) * scaleFactor);
+  vertex(x + (326.50 - baseX) * scaleFactor, y + (479.52 - baseY) * scaleFactor);
+  vertex(x + (317.15 - baseX) * scaleFactor, y + (484.13 - baseY) * scaleFactor);
+  bezierVertex(
+    x + (317.07 - baseX) * scaleFactor, y + (484.16 - baseY) * scaleFactor,
+    x + (316.91 - baseX) * scaleFactor, y + (484.22 - baseY) * scaleFactor,
+    x + (316.91 - baseX) * scaleFactor, y + (484.22 - baseY) * scaleFactor
+  );
+  vertex(x + (300.70 - baseX) * scaleFactor, y + (489.32 - baseY) * scaleFactor);
+  vertex(x + (702.88 - baseX) * scaleFactor, y + (489.32 - baseY) * scaleFactor);
+  endShape();
 }
 
 // ---------------- Admin：點擊刪除（僅 Admin） & Clear All ----------------

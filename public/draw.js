@@ -37,6 +37,8 @@ let adminMode = false;
 let tabDown = false;
 let _connBadge, _adminHUD;
 
+
+
 // ---------- preload ----------
 function preload() {
   tplMaskImg    = loadImage(MASK_PATH,    () => {}, () => console.warn('[draw] mask not found:', MASK_PATH));
@@ -46,6 +48,7 @@ function preload() {
 function setup() {
   pixelDensity(1);
   canvas = createCanvas(windowWidth, windowHeight);
+  preventPageScrollWhileDrawing();
 
   pgPaint  = createGraphics(width, height);  pgPaint.pixelDensity(1);  pgPaint.clear();
   maskG    = createGraphics(width, height);  maskG.pixelDensity(1);    maskG.clear();
@@ -94,13 +97,32 @@ function setup() {
   const ready = !!(tplMaskImg && tplOutlineImg);
   if (btnSend) {
     btnSend.disabled = !ready;
-    btnSend.title = ready ? '' : '請確認 /assets/rabbit_mask.png 與 rabbit_outline.png 是否存在';
+    btnSend.title = ready ? '' : 'Please check /assets/rabbit_mask.png and rabbit_outline.png exist or not';
   }
 
   // Admin 模式切換：Tab + A
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup',   onKeyUp);
 }
+
+// 檔案內新增：
+function preventPageScrollWhileDrawing() {
+  // ✅ 只鎖 Canvas 本身的手勢，其他 UI（包括 Slider）不受影響
+  canvas.elt.style.touchAction = 'none';
+  canvas.elt.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  canvas.elt.addEventListener?.('gesturestart', (e) => e.preventDefault(), { passive: false });
+
+  // 建議保留 overscroll-behavior，避免橡皮筋，但不鎖 overflow
+  document.documentElement.style.overscrollBehavior = 'none';
+  document.body.style.overscrollBehavior = 'none';
+
+  // ❌ 不要在 touchstart/touchend 時把 body.overflow 改為 hidden
+  // （這會在某些情況下連 UI 都一齊鎖住）
+}
+
+// p5：在觸控移動時阻止預設（避免滾動）
+//function touchMoved() { return false; }
+
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
@@ -339,11 +361,11 @@ function mountPreviewModal() {
   const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:12px;';
   _btnCancel = document.createElement('button');
-  _btnCancel.textContent = '繼續修改';
+  _btnCancel.textContent = 'Continue to Modify';
   _btnCancel.style.cssText = btnCss('#3a3f47');
   _btnCancel.onclick = () => { _previewWrap.style.display = 'none'; };
   _btnConfirm = document.createElement('button');
-  _btnConfirm.textContent = 'Send 到 Zoo';
+  _btnConfirm.textContent = 'Send to Rabbit Playground';
   _btnConfirm.style.cssText = btnCss('#2ecc71');
   _btnConfirm.onclick = () => { _previewWrap.style.display = 'none'; doSendToZoo(); };
   btnRow.appendChild(_btnCancel); btnRow.appendChild(_btnConfirm);
@@ -360,11 +382,11 @@ function openPreviewModal() {
   _previewWrap.style.display = 'grid';
 }
 function doSendToZoo() {
-  if (!WS || !WS.isOpen()) { alert('WebSocket 連線緊／重連中，請稍後再試。'); return; }
+  if (!WS || !WS.isOpen()) { alert('WebSocket Connecting/Reconnecting, please try again later。'); return; }
   const { payload } = buildExportImage();
   const ok = WS.send(payload);
-  if (!ok) { alert('未能送出，WebSocket 尚未就緒。'); return; }
-  alert('已送到 Zoo！🐇');
+  if (!ok) { alert('Unable to send, WebSocket not ready'); return; }
+  alert('Already Sent Rabbit Playround！');
 }
 
 // ============================
